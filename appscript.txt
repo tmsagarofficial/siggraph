@@ -1,0 +1,114 @@
+
+function fetchDataAndPopulate() {
+  var sourceSpreadsheetUrl = "https://docs.google.com/spreadsheets/d/1YJO2_haprhq7VEPRPPEsrOVuQMehNaLypAKSyovSrCE/";
+  var sourceSheetName = "Form Responses 1";
+  var targetSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  
+  var sourceSpreadsheet = SpreadsheetApp.openByUrl(sourceSpreadsheetUrl);
+  var sourceSheet = sourceSpreadsheet.getSheetByName(sourceSheetName);
+  
+  if (!sourceSheet) {
+    Logger.log("Source sheet not found: " + sourceSheetName);
+    return;
+  }
+  
+  var sourceData = sourceSheet.getDataRange().getValues();
+  Logger.log("Total Count:"+sourceData.length);
+  Logger.log("Fetched data: " + JSON.stringify(sourceData));
+
+  if (!sourceData || sourceData.length === 0) {
+    Logger.log("No data found in source sheet.");
+    return;
+  }
+
+  var filteredData = [];
+  var verifiedColumnIndex = 15;
+  
+  for (var i = 0; i < sourceData.length; i++) {
+    if (sourceData[i][verifiedColumnIndex] == "✅") {
+      filteredData.push(sourceData[i]);
+    }
+  }
+  Logger.log("Total Count:"+filteredData.length);
+  if (filteredData.length === 0) {
+    Logger.log("No verified data found.");
+    return;
+  }
+
+  var main1Sheet = targetSpreadsheet.getSheetByName("IMPORT");
+  if (!main1Sheet) {
+    Logger.log("IMPORT sheet not found.");
+    return;
+  }
+  
+  main1Sheet.clear();
+  main1Sheet.getRange(1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+
+  
+}
+
+function filterYearWiseIntoSheets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var main1Sheet = ss.getSheetByName("IMPORT"); // Your MAIN sheet
+  var targetSpreadsheet = ss; // Assuming you are writing to the same spreadsheet
+
+  if (!main1Sheet) {
+    Logger.log("IMPORT sheet not found.");
+    return;
+  }
+
+  var data = main1Sheet.getDataRange().getValues();
+  Logger.log("Main1 data: " + JSON.stringify(data));
+
+  if (!data || data.length === 0) {
+    Logger.log("No data found in Main1.");
+    return;
+  }
+
+  var sheet1Data = [];
+  var sheet2Data = [];
+  var sheet3Data = [];
+  var sheet4Data = [];
+
+  // Loop through each row and filter based on the 7th column (index 6)
+  for (var i = 0; i < data.length; i++) {
+    var value = data[i][5].toString().trim(); // Convert to string and trim spaces
+    if (value === "1st") {
+      sheet1Data.push(data[i]);
+    } else if (value === "3rd") {
+      sheet2Data.push(data[i]);
+    } else if (value === "5th") {
+      sheet3Data.push(data[i]);
+    } else if (value === "7th") {
+      sheet4Data.push(data[i]);
+    }
+  }
+
+  // Log filtered data to check if rows are assigned correctly
+  Logger.log("Sheet1 Data: " + JSON.stringify(sheet1Data));
+  Logger.log("Sheet2 Data: " + JSON.stringify(sheet2Data));
+  Logger.log("Sheet3 Data: " + JSON.stringify(sheet3Data));
+  Logger.log("Sheet4 Data: " + JSON.stringify(sheet4Data));
+
+  // Clear existing data in each target sheet before writing new data
+  targetSpreadsheet.getSheetByName("Sheet1").clear();
+  targetSpreadsheet.getSheetByName("Sheet2").clear();
+  targetSpreadsheet.getSheetByName("Sheet3").clear();
+  targetSpreadsheet.getSheetByName("Sheet4").clear();
+
+  // Write filtered data to respective sheets if data exists
+  if (sheet1Data.length > 0) {
+    targetSpreadsheet.getSheetByName("Sheet1").getRange(1, 1, sheet1Data.length, sheet1Data[0].length).setValues(sheet1Data);
+    
+  }
+  if (sheet2Data.length > 0) {
+    targetSpreadsheet.getSheetByName("Sheet2").getRange(1, 1, sheet2Data.length, sheet2Data[0].length).setValues(sheet2Data);
+  }
+  if (sheet3Data.length > 0) {
+    targetSpreadsheet.getSheetByName("Sheet3").getRange(1, 1, sheet3Data.length, sheet3Data[0].length).setValues(sheet3Data);
+  }
+  if (sheet4Data.length > 0) {
+    targetSpreadsheet.getSheetByName("Sheet4").getRange(1, 1, sheet4Data.length, sheet4Data[0].length).setValues(sheet4Data);
+  }
+}
+
