@@ -107,6 +107,7 @@ function fetchDataAndPopulate() {
     Logger.log("IMPORT sheet successfully populated");
 }
 
+
 function filterYearWiseIntoSheets() {
     Logger.log("\n=== Starting Year-wise Data Distribution ===");
 
@@ -148,6 +149,8 @@ function filterYearWiseIntoSheets() {
 
     var counters = { "24SIG": 100, "23SIG": 100, "22SIG": 100, "21SIG": 100 };
     var processedHashes = {}; // To track duplicates
+    var duplicateCount = 0; // Track duplicates
+    var uniqueCount = 0; // Track unique entries
 
     // Process rows
     rows.forEach(row => {
@@ -159,6 +162,7 @@ function filterYearWiseIntoSheets() {
         var emailHash = createStudentHash(email.trim());
         if (processedHashes[emailHash]) {
             Logger.log("Duplicate found, skipping row for email: " + email);
+            duplicateCount++; // Increment duplicate counter
             return;
         }
 
@@ -185,23 +189,47 @@ function filterYearWiseIntoSheets() {
             default:
                 Logger.log("Unknown semester: " + semester);
         }
+        uniqueCount++; // Increment unique counter
     });
 
-    // Write to year-wise sheets
+    // Write to year-wise sheets without clearing
     for (var sheetName in sheets) {
         var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
-        sheet.clear(); // Clear previous data
-        sheet.appendRow(newHeaders); // Add updated headers
-        if (sheets[sheetName].data.length > 0) {
-            sheet.getRange(2, 1, sheets[sheetName].data.length, newHeaders.length)
-                .setValues(sheets[sheetName].data);
+
+        // Get the existing data in the sheet
+        var existingData = sheet.getDataRange().getValues();
+        var existingHashes = {};
+        // Skip header row and create a map of existing hashes
+        if (existingData.length > 1) {
+            existingData.slice(1).forEach(row => {
+                var existingHash = row[1]; // The hash is in the second column (index 1)
+                if (existingHash) {
+                    existingHashes[existingHash] = true;
+                }
+            });
+        }
+
+        // Ensure headers are written only once, if sheet is empty
+        if (sheet.getLastRow() === 0) {
+            sheet.appendRow(newHeaders); // Add updated headers if sheet is empty
+        }
+
+        // Filter out data that already exists in the sheet based on email hash
+        var newData = sheets[sheetName].data.filter(row => !existingHashes[row[1]]); // row[1] is the email hash
+
+        if (newData.length > 0) {
+            // Append new data to the sheet
+            sheet.getRange(sheet.getLastRow() + 1, 1, newData.length, newHeaders.length)
+                .setValues(newData);
+        } else {
+            Logger.log("No new unique data to append to " + sheetName);
         }
     }
 
     Logger.log("Year-wise data distribution completed with updated headers");
+    Logger.log("Total Duplicates Found: " + duplicateCount);
+    Logger.log("Total Unique IDs Assigned: " + uniqueCount);
 }
-
-
 
 
 // Helper function to create hash map of existing data
