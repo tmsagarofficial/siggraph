@@ -1,114 +1,303 @@
+// Start function that ties everything together
+function startProcess(includeColumns) {
+    Logger.log("=== Starting Process with Configuration ===");
 
-function fetchDataAndPopulate() {
-  var sourceSpreadsheetUrl = "https://docs.google.com/spreadsheets/d/1YJO2_haprhq7VEPRPPEsrOVuQMehNaLypAKSyovSrCE/";
-  var sourceSheetName = "Form Responses 1";
-  var targetSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  
-  var sourceSpreadsheet = SpreadsheetApp.openByUrl(sourceSpreadsheetUrl);
-  var sourceSheet = sourceSpreadsheet.getSheetByName(sourceSheetName);
-  
-  if (!sourceSheet) {
-    Logger.log("Source sheet not found: " + sourceSheetName);
-    return;
-  }
-  
-  var sourceData = sourceSheet.getDataRange().getValues();
-  Logger.log("Total Count:"+sourceData.length);
-  Logger.log("Fetched data: " + JSON.stringify(sourceData));
+    var includeColumns = {
+        "Timestamp": !true,
+        "Email Address": !true,
+        "Full Name As Per College Documents": true,
+        "personal email id": !true,
+        "college email id": !true,
+        "Semester": !true,
+        "Phone Number (without +91)": !true,
+        "USN": !true,
+        "Branch": !true,
+        "Were you a member of Siggraph BNMIT previously?": !true,
+        "UPI Transaction ID": !true,
+        "Payment Screenshot": !true,
+        "Remarks: (Optional)": !true,
+        "Note?": !true,
+        "Payments?": !true,
+        "Verified?": !true,
+    };
 
-  if (!sourceData || sourceData.length === 0) {
-    Logger.log("No data found in source sheet.");
-    return;
-  }
+    Logger.log("Included Columns Configuration:");
+    Object.keys(includeColumns).forEach(key => {
+        Logger.log(key + ": " + includeColumns[key]);
+    });
 
-  var filteredData = [];
-  var verifiedColumnIndex = 15;
-  
-  for (var i = 0; i < sourceData.length; i++) {
-    if (sourceData[i][verifiedColumnIndex] == "✅") {
-      filteredData.push(sourceData[i]);
+    Logger.log("\n=== Starting Data Pipeline ===");
+    fetchDataAndPopulate();
+    filterYearWiseIntoSheets();
+    createFinalSheet(SpreadsheetApp.getActiveSpreadsheet(), includeColumns);
+    Logger.log("=== Process completed successfully! ===");
+}
+
+// Function to create a unique hash for a student (email only)
+// Function to create a unique MD5 hash for a student (email only)
+function createStudentHash(collegeEmail) {
+    if (!collegeEmail) {
+        Logger.log("WARNING: Attempt to create hash with empty email");
+        return null;
     }
-  }
-  Logger.log("Total Count:"+filteredData.length);
-  if (filteredData.length === 0) {
-    Logger.log("No verified data found.");
-    return;
-  }
 
-  var main1Sheet = targetSpreadsheet.getSheetByName("IMPORT");
-  if (!main1Sheet) {
-    Logger.log("IMPORT sheet not found.");
-    return;
-  }
-  
-  main1Sheet.clear();
-  main1Sheet.getRange(1, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+    const emailHash = collegeEmail.toString().toLowerCase().trim();
+    if (emailHash.length === 0) {
+        Logger.log("WARNING: Email hash creation failed - empty after trimming");
+        return null;
+    }
 
-  
+    // Generate MD5 hash using Utilities.computeDigest
+    const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, emailHash);
+    const md5Hash = rawHash.map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, '0')).join('');
+
+    Logger.log("Created MD5 hash for email: " + collegeEmail + " -> " + md5Hash);
+    return md5Hash;
+}
+
+
+// Function to fetch data and populate the 'IMPORT' sheet
+function fetchDataAndPopulate() {
+    Logger.log("\n=== Starting Data Import Process ===");
+
+    var sourceSpreadsheetUrl = "https://docs.google.com/spreadsheets/d/1YJO2_haprhq7VEPRPPEsrOVuQMehNaLypAKSyovSrCE/";
+    var sourceSheetName = "Form Responses 1";
+    var targetSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+
+    Logger.log("Attempting to open source spreadsheet: " + sourceSpreadsheetUrl);
+    var sourceSpreadsheet = SpreadsheetApp.openByUrl(sourceSpreadsheetUrl);
+    var sourceSheet = sourceSpreadsheet.getSheetByName(sourceSheetName);
+
+    if (!sourceSheet) {
+        Logger.log("ERROR: Source sheet not found: " + sourceSheetName);
+        return;
+    }
+
+    Logger.log("Successfully opened source sheet. Fetching data...");
+    var sourceData = sourceSheet.getDataRange().getValues();
+    if (!sourceData || sourceData.length === 0) {
+        Logger.log("ERROR: No data found in source sheet");
+        return;
+    }
+
+    var headers = sourceData[0];
+    var dataRows = sourceData.slice(1);
+
+    Logger.log("Retrieved " + dataRows.length + " rows of data (excluding headers)");
+    Logger.log("Headers found: " + headers.join(", "));
+
+    var verifiedColumnIndex = headers.indexOf("Verified?");
+    var filteredData = dataRows.filter(row => row[verifiedColumnIndex] == "✅");
+
+    Logger.log("Filtered to " + filteredData.length + " verified entries");
+    if (filteredData.length === 0) {
+        Logger.log("WARNING: No verified data found");
+        return;
+    }
+
+    var main1Sheet = targetSpreadsheet.getSheetByName("IMPORT");
+    if (!main1Sheet) {
+        Logger.log("ERROR: IMPORT sheet not found");
+        return;
+    }
+
+    Logger.log("Writing data to IMPORT sheet...");
+    main1Sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    main1Sheet.getRange(2, 1, filteredData.length, filteredData[0].length).setValues(filteredData);
+    Logger.log("IMPORT sheet successfully populated");
 }
 
 function filterYearWiseIntoSheets() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var main1Sheet = ss.getSheetByName("IMPORT"); // Your MAIN sheet
-  var targetSpreadsheet = ss; // Assuming you are writing to the same spreadsheet
+    Logger.log("\n=== Starting Year-wise Data Distribution ===");
 
-  if (!main1Sheet) {
-    Logger.log("IMPORT sheet not found.");
-    return;
-  }
-
-  var data = main1Sheet.getDataRange().getValues();
-  Logger.log("Main1 data: " + JSON.stringify(data));
-
-  if (!data || data.length === 0) {
-    Logger.log("No data found in Main1.");
-    return;
-  }
-
-  var sheet1Data = [];
-  var sheet2Data = [];
-  var sheet3Data = [];
-  var sheet4Data = [];
-
-  // Loop through each row and filter based on the 7th column (index 6)
-  for (var i = 0; i < data.length; i++) {
-    var value = data[i][5].toString().trim(); // Convert to string and trim spaces
-    if (value === "1st") {
-      sheet1Data.push(data[i]);
-    } else if (value === "3rd") {
-      sheet2Data.push(data[i]);
-    } else if (value === "5th") {
-      sheet3Data.push(data[i]);
-    } else if (value === "7th") {
-      sheet4Data.push(data[i]);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var mainSheet = ss.getSheetByName("IMPORT");
+    if (!mainSheet) {
+        Logger.log("ERROR: IMPORT sheet not found");
+        return;
     }
-  }
 
-  // Log filtered data to check if rows are assigned correctly
-  Logger.log("Sheet1 Data: " + JSON.stringify(sheet1Data));
-  Logger.log("Sheet2 Data: " + JSON.stringify(sheet2Data));
-  Logger.log("Sheet3 Data: " + JSON.stringify(sheet3Data));
-  Logger.log("Sheet4 Data: " + JSON.stringify(sheet4Data));
+    var data = mainSheet.getDataRange().getValues();
+    if (data.length < 2) {
+        Logger.log("No data available in IMPORT sheet");
+        return;
+    }
 
-  // Clear existing data in each target sheet before writing new data
-  targetSpreadsheet.getSheetByName("Sheet1").clear();
-  targetSpreadsheet.getSheetByName("Sheet2").clear();
-  targetSpreadsheet.getSheetByName("Sheet3").clear();
-  targetSpreadsheet.getSheetByName("Sheet4").clear();
+    var headers = data[0]; // Extract headers
+    var rows = data.slice(1); // Extract data rows
 
-  // Write filtered data to respective sheets if data exists
-  if (sheet1Data.length > 0) {
-    targetSpreadsheet.getSheetByName("Sheet1").getRange(1, 1, sheet1Data.length, sheet1Data[0].length).setValues(sheet1Data);
-    
-  }
-  if (sheet2Data.length > 0) {
-    targetSpreadsheet.getSheetByName("Sheet2").getRange(1, 1, sheet2Data.length, sheet2Data[0].length).setValues(sheet2Data);
-  }
-  if (sheet3Data.length > 0) {
-    targetSpreadsheet.getSheetByName("Sheet3").getRange(1, 1, sheet3Data.length, sheet3Data[0].length).setValues(sheet3Data);
-  }
-  if (sheet4Data.length > 0) {
-    targetSpreadsheet.getSheetByName("Sheet4").getRange(1, 1, sheet4Data.length, sheet4Data[0].length).setValues(sheet4Data);
-  }
+    // Add SIG-ID and Email Hash to the beginning of the headers
+    var newHeaders = ["SIG-ID", "Email Hash"].concat(headers);
+
+    // Indexes for important fields
+    var semesterIndex = headers.indexOf("Semester");
+    var emailIndex = headers.indexOf("college email id");
+
+    if (semesterIndex === -1 || emailIndex === -1) {
+        Logger.log("ERROR: Required columns (Semester, college email id) not found");
+        return;
+    }
+
+    // Prepare year-wise sheets
+    var sheets = {
+        "Sheet1": { prefix: "24SIG", data: [] },
+        "Sheet2": { prefix: "23SIG", data: [] },
+        "Sheet3": { prefix: "22SIG", data: [] },
+        "Sheet4": { prefix: "21SIG", data: [] }
+    };
+
+    var counters = { "24SIG": 100, "23SIG": 100, "22SIG": 100, "21SIG": 100 };
+    var processedHashes = {}; // To track duplicates
+
+    // Process rows
+    rows.forEach(row => {
+        var semester = row[semesterIndex];
+        var email = row[emailIndex];
+
+        if (!semester || !email) return; // Skip rows with missing data
+
+        var emailHash = createStudentHash(email.trim());
+        if (processedHashes[emailHash]) {
+            Logger.log("Duplicate found, skipping row for email: " + email);
+            return;
+        }
+
+        processedHashes[emailHash] = true; // Mark hash as processed
+        var sigId = null;
+
+        switch (semester) {
+            case "1st":
+                sigId = sheets["Sheet1"].prefix + (++counters["24SIG"]);
+                sheets["Sheet1"].data.push([sigId, emailHash].concat(row));
+                break;
+            case "3rd":
+                sigId = sheets["Sheet2"].prefix + (++counters["23SIG"]);
+                sheets["Sheet2"].data.push([sigId, emailHash].concat(row));
+                break;
+            case "5th":
+                sigId = sheets["Sheet3"].prefix + (++counters["22SIG"]);
+                sheets["Sheet3"].data.push([sigId, emailHash].concat(row));
+                break;
+            case "7th":
+                sigId = sheets["Sheet4"].prefix + (++counters["21SIG"]);
+                sheets["Sheet4"].data.push([sigId, emailHash].concat(row));
+                break;
+            default:
+                Logger.log("Unknown semester: " + semester);
+        }
+    });
+
+    // Write to year-wise sheets
+    for (var sheetName in sheets) {
+        var sheet = ss.getSheetByName(sheetName) || ss.insertSheet(sheetName);
+        sheet.clear(); // Clear previous data
+        sheet.appendRow(newHeaders); // Add updated headers
+        if (sheets[sheetName].data.length > 0) {
+            sheet.getRange(2, 1, sheets[sheetName].data.length, newHeaders.length)
+                .setValues(sheets[sheetName].data);
+        }
+    }
+
+    Logger.log("Year-wise data distribution completed with updated headers");
 }
+
+
+
+
+// Helper function to create hash map of existing data
+function createExistingDataMap(spreadsheet, sheetName, emailIndex) {
+    Logger.log("Creating hash map for " + sheetName + "...");
+    var sheet = spreadsheet.getSheetByName(sheetName);
+    var map = {};
+
+    if (sheet) {
+        var data = sheet.getDataRange().getValues();
+        if (data.length > 1) {
+            data.slice(1).forEach(row => {
+                var hash = row[emailIndex];
+                if (hash) {
+                    map[hash] = true;
+                }
+            });
+        }
+    }
+
+    Logger.log(sheetName + " map created with " + Object.keys(map).length + " entries");
+    return map;
+}
+
+// Helper function to append data to a sheet
+function appendToSheet(spreadsheet, sheetName, headers, data) {
+    var sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) {
+        sheet = spreadsheet.insertSheet(sheetName);
+        sheet.appendRow(headers);
+    }
+    sheet.getRange(sheet.getLastRow() + 1, 1, data.length, data[0].length).setValues(data);
+    Logger.log("Appended " + data.length + " rows to " + sheetName);
+}
+
+// Helper function to get the highest counter for a given sheet
+function getHighestCounter(existingDataMap, prefix) {
+    var maxCounter = 100;
+    Object.keys(existingDataMap).forEach(email => {
+        if (email.startsWith(prefix)) {
+            var counter = parseInt(email.slice(prefix.length));
+            if (counter > maxCounter) {
+                maxCounter = counter;
+            }
+        }
+    });
+    return maxCounter;
+}
+
+
+function createFinalSheet(spreadsheet, includeColumns) {
+    Logger.log("\n=== Creating FinalSheet ===");
+
+    var finalSheet = spreadsheet.getSheetByName("FinalSheet");
+    if (!finalSheet) {
+        Logger.log("FinalSheet not found, creating a new one...");
+        finalSheet = spreadsheet.insertSheet("FinalSheet");
+    } else {
+        Logger.log("Clearing existing data in FinalSheet...");
+        finalSheet.clear(); // Clear previous data
+    }
+
+    // Headers: SIG-ID followed by Main Sheet headers (filtered by includeColumns)
+    var headers = ["SIG-ID"].concat(Object.keys(includeColumns).filter(key => includeColumns[key]));
+
+    finalSheet.appendRow(headers); // Write headers to FinalSheet
+
+    var allData = [];
+    ["Sheet1", "Sheet2", "Sheet3", "Sheet4"].forEach(sheetName => {
+        var sheet = spreadsheet.getSheetByName(sheetName);
+        if (sheet) {
+            var data = sheet.getDataRange().getValues();
+            if (data.length > 1) {
+                var headerMap = {};
+                data[0].forEach((col, i) => { headerMap[col] = i; });
+
+                allData = allData.concat(
+                    data.slice(1).map(row => {
+                        return headers.map(header => {
+                            if (header === "SIG-ID") return row[headerMap[header]];
+                            return row[headerMap[header]] || "";
+                        });
+                    })
+                );
+            }
+        }
+    });
+
+    if (allData.length > 0) {
+        finalSheet.getRange(finalSheet.getLastRow() + 1, 1, allData.length, allData[0].length).setValues(allData);
+    } else {
+        Logger.log("No new data to append to FinalSheet");
+    }
+
+    Logger.log("=== FinalSheet Creation Completed ===");
+}
+
+
 
