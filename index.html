@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Covered+By+Your+Grace&display=swap" rel="stylesheet">
+  <title>Welcome Aboard! 🎉✨🚀</title>
+  <style>
+    /* Global Styles */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+      font-family: 'Montserrat', sans-serif;
+    }
+    table {
+      width: 100%;
+      cellpadding: 0;
+      cellspacing: 0;
+    }
+    .content-container {
+      max-width: 600px;
+      margin: auto;
+      background-color: #ffffff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .header-img {
+      width: 100%;
+      height: auto;
+    }
+    .card-container {
+      padding: 30px;
+      text-align: center;
+      font-size: 16px;
+      color: #333;
+    }
+    .sig-id-card {
+      position: relative;
+      background-color: #e53935;
+      width: 100%;
+      max-width: 350px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      margin: 20px auto;
+    }
+    .sig-id-card span {
+      font-size: 46px;
+      font-weight: normal;
+      font-family: 'Covered By Your Grace', cursive;
+      color: #333;
+      transform: rotate(-5deg);
+    }
+    .sig-id-number {
+      font-size: 44px;
+      font-weight: bold;
+      color: #333;
+    }
+    .footer {
+      padding: 20px;
+      border-top: 1px solid #ecedec;
+      text-align: center;
+      font-size: 12px;
+      color: #888888;
+      background-color: #f2f2f2;
+    }
+    .footer a {
+      text-decoration: none;
+      color: #888888;
+    }
+
+    /* Media Query for smaller screens (mobile phones) */
+    @media only screen and (max-width: 600px) {
+      .sig-id-card {
+        width: 80%; /* Reduce the width for mobile screens */
+      }
+      .sig-id-card span {
+        font-size: 32px; /* Smaller font size inside the card */
+      }
+      .sig-id-card .sig-id-number {
+        font-size: 32px; /* Adjust font size for mobile */
+      }
+      .card-container p {
+        font-size: 14px; /* Adjust paragraph text size for mobile */
+      }
+    }
+  </style>
+</head>
+<body>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td align="center" style="padding: 20px;">
+        <div class="content-container">
+          <div style="text-align: center; color: white;">
+            <img class="header-img" src="https://i.imgur.com/CS7Qr78.png" alt="SIGGRAPH BNMIT Banner">
+          </div>
+          <div class="card-container">
+            <p>Hello, <strong>Sagar</strong> 👋</p>
+            <p>Your unique SIG ID is:</p>
+            <div class="sig-id-card">
+              <!-- Folded Corner Flap with Shadow Effect -->
+              <div style="position: absolute; top: 0; right: 0; width: 30px; height: 30px; background-color: #ffffff; transform: rotate(-90deg); border-top-left-radius: 10px; clip-path: polygon(0 0, 100% 0, 0 100%); box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);"></div>
+              <div style="position: absolute; top: 0; right: 0; width: 30px; height: 30px; background-color: #b9b3b3; transform: rotate(90deg); border-top-left-radius: 10px; clip-path: polygon(0 0, 100% 0, 0 100%); box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);"></div>
+              <div style="color: white; padding: 10px; text-align: center;">
+                <span>SAGAR</span>
+              </div>
+              <div style="height: 100px; border-top: 2px solid #e53935; border-bottom: 2px solid #e53935; background-color: white; text-align: center;">
+                <p class="sig-id-number">21SIG007</p>
+              </div>
+              <div style="color: white; padding: 10px; text-align: center; font-size: 16px; font-weight: bold;">
+                SIGGRAPH BNMIT
+              </div>
+            </div>
+            <p style="margin-top: 20px; font-size: 16px; color: #333;">
+              This ID is your key 🗝️ to all things SIGGRAPH! Keep it safe, as it unlocks your access to our community events, resources, and future opportunities.
+            </p>
+          </div>
+          <div class="footer">
+            <p>
+              <a href="https://bento.me/siggraphbnmit" target="_blank">Sent with ❤️ by the SIGGRAPH BNMIT Team</a>
+            </p>
+          </div>
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
